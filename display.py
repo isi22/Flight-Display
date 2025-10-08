@@ -23,27 +23,44 @@ def _matrix_process_target(queue, options):
     matrix = RGBMatrix(options=options)
     canvas = matrix.CreateFrameCanvas()
 
+    current_frames = []
+    frame_index = 0
+
     try:
         while True:
-            # Wait for a new set of frames from the main process
-            frames = queue.get()
+            # Check for new data from the main process in a non-blocking way
+            try:
+                new_frames = queue.get_nowait()
+                if new_frames is None:  # Shutdown signal
+                    break
 
-            # A special 'None' value signals the process to exit
-            if frames is None:
-                break
+                # If we get here, there's new data. Update our state.
+                current_frames = new_frames
+                frame_index = 0  # Reset animation to the beginning
+            except Empty:
+                # This is normal, it means no new data. Continue with the current animation.
+                pass
 
-            if frames:
-                if len(frames) > 1:  # Animation
-                    for frame in frames:
-                        canvas.SetImage(frame.convert("RGB"))
-                        canvas = matrix.SwapOnVSync(canvas)
-                        time.sleep(0.1)
-                else:  # Static image
-                    canvas.SetImage(frames[0].convert("RGB"))
+            # Now, display the current state
+            if current_frames:
+                if len(current_frames) > 1:  # It's an animation
+                    # Display the current frame
+                    canvas.SetImage(current_frames[frame_index].convert("RGB"))
                     canvas = matrix.SwapOnVSync(canvas)
-            else:  # Empty list means clear the screen
+
+                    # Advance to the next frame, looping if necessary
+                    frame_index = (frame_index + 1) % len(current_frames)
+
+                    time.sleep(0.1)  # Animation speed
+                else:  # It's a static image
+                    canvas.SetImage(current_frames[0].convert("RGB"))
+                    canvas = matrix.SwapOnVSync(canvas)
+                    time.sleep(0.5)  # Sleep to prevent busy-waiting
+            else:
+                # No frames to show, keep the panel clear.
                 canvas.Clear()
                 canvas = matrix.SwapOnVSync(canvas)
+                time.sleep(0.1)  # Sleep briefly to prevent busy-waiting
     finally:
         matrix.Clear()
 
