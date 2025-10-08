@@ -43,7 +43,7 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
             if (
                 flight.latitude
                 and flight.longitude
-                and flight.flight_number
+                and flight.number
                 and flight.altitude < max_altitude
             ):
                 dist = haversine(lat, lon, flight.latitude, flight.longitude)
