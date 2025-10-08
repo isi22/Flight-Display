@@ -138,18 +138,14 @@ def generate_display_image(
 
     max_width = MATRIX_WIDTH - 2 * margin
 
-    # --- MODIFIED: Calculate position for right-aligned text ---
     width_line_1_right = generator.get_text_width(line_1_right)
     x_pos_line_1_right = MATRIX_WIDTH - width_line_1_right - margin
 
-    # --- MODIFIED: Scroll check now ignores line 1 ---
     width_2 = generator.get_text_width(line_2_text)
-    width_3 = generator.get_text_width(line_3_text)
     scroll_2 = width_2 > max_width
-    scroll_3 = width_3 > max_width
 
-    if not any([scroll_2, scroll_3]):
-        print("All lines fit. Generating static PNG...")
+    if not scroll_2:
+        print("City name fits. Generating static PNG...")
         generator.clear()
         # Draw line 1 in two parts for correct alignment
         generator.draw_text(line_1_left, x_start=margin, y_start=line_1_y)
@@ -165,40 +161,34 @@ def generate_display_image(
         print("One or more lines are too long. Generating scrolling GIF...")
         frames = []
 
-        longest_scroll = 0
-        if scroll_2:
-            longest_scroll = max(longest_scroll, width_2)
-        if scroll_3:
-            longest_scroll = max(longest_scroll, width_3)
-
-        scroll_text_2 = line_2_text + "   " if scroll_2 else line_2_text
-        scroll_text_3 = line_3_text + "   " if scroll_3 else line_3_text
-
-        for i in range(longest_scroll + MATRIX_WIDTH):
+        for i in range(width_2 + 20):
             generator.clear()
 
-            # --- MODIFIED: Line 1 is now always drawn statically in two parts ---
+            # Line 1
             generator.draw_text(line_1_left, x_start=margin, y_start=line_1_y)
             generator.draw_text(
                 line_1_right, x_start=x_pos_line_1_right, y_start=line_1_y
             )
 
-            # Draw lines 2 and 3 based on whether they need to scroll
-            if scroll_2:
-                generator.draw_text(scroll_text_2, x_start=margin - i, y_start=line_2_y)
-                generator.draw_text(
-                    scroll_text_2, x_start=margin - i + width_2 + 20, y_start=line_2_y
-                )
-            else:
-                generator.draw_text(line_2_text, x_start=margin, y_start=line_2_y)
+            # Line 2 (scrolling)
 
-            if scroll_3:
-                generator.draw_text(scroll_text_3, x_start=margin - i, y_start=line_3_y)
-                generator.draw_text(
-                    scroll_text_3, x_start=margin - i + width_3 + 20, y_start=line_3_y
-                )
-            else:
-                generator.draw_text(line_3_text, x_start=margin, y_start=line_3_y)
+            generator.draw_text(
+                line_2_text,
+                x_start=margin - i,
+                y_start=line_2_y,
+                clip_x_start=margin,
+                clip_x_end=MATRIX_WIDTH - margin,
+            )
+            generator.draw_text(
+                line_2_text,
+                x_start=margin - i + width_2 + 20,
+                y_start=line_2_y,
+                clip_x_start=margin,
+                clip_x_end=MATRIX_WIDTH - margin,
+            )
+
+            # Line 3
+            generator.draw_text(line_3_text, x_start=margin, y_start=line_3_y)
 
             frame_image = generator.get_image(on_colour=ON_COLOUR)
             frames.append(frame_image)

@@ -76,7 +76,7 @@ def main():
     HOME_LON = -0.217605
     SEARCH_RADIUS_KM = 10  # Search within a 20km radius
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
-    REFRESH_INTERVAL_SECONDS = 5
+    REFRESH_INTERVAL_SECONDS = 15
     API_TIMEOUT = 1
 
     display = get_display()
@@ -146,6 +146,7 @@ def main():
                     .replace("Airbus", "")
                     .replace("Boeing ", "B")
                     .replace("Dreamliner", "DL")
+                    .replace("Embraer", "E")
                     .replace("(", "")
                     .replace(")", "")
                     .strip()
@@ -205,8 +206,11 @@ def main():
             total_processing_time = time.time() - cycle_start_time
             print(f"  Total Cycle Time:    {total_processing_time:.2f}s")
 
-            print(f"Waiting for {REFRESH_INTERVAL_SECONDS} seconds...")
-            time.sleep(REFRESH_INTERVAL_SECONDS)
+            wait_time = REFRESH_INTERVAL_SECONDS - total_processing_time
+            if wait_time < 0:
+                wait_time = 0
+            print(f"Waiting {wait_time:.2f}s before next update...")
+            time.sleep(wait_time)
     finally:
         print("\nShutting down. Stopping display thread.")
         display.stop()
