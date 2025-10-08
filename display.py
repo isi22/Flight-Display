@@ -134,7 +134,10 @@ class MatrixDisplay(Display):
                         for frame in current_frames:
                             if not self._running.is_set():
                                 break
-                            canvas.SetImage(frame.convert("RGB"))
+                            clean_frame = Image.frombytes(
+                                "RGB", frame.size, frame.convert("RGB").tobytes()
+                            )
+                            canvas.SetImage(clean_frame)
                             canvas = matrix.SwapOnVSync(canvas)
                             time.sleep(0.1)
                     else:  # Static image
