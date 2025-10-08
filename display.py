@@ -93,7 +93,7 @@ class MatrixDisplay(Display):
         self.options.parallel = 1
         self.options.hardware_mapping = "regular"
         self.options.led_rgb_sequence = "RBG"
-        self.options.brightness = 25
+        self.options.brightness = 0
 
         # --- Multiprocessing setup ---
         self._queue = mp.Queue()
