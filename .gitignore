@@ -1,0 +1,9 @@
+.DS_Store
+
+old/
+
+simulated_displays/
+
+pycache/
+*.pyc
+.env
