@@ -28,10 +28,15 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
     """
     Finds the closest flight to the home location.
     """
+    start = time.time()
     bounds = fr_api.get_bounds_by_point(lat, lon, radius)  # API uses metres
+    print(f"Bounds calculated in {time.time()-start:.2f}s")
+    start = time.time()
     flights = fr_api.get_flights(bounds=bounds)
+    print(f"Flight data retrieved in {time.time()-start:.2f}s")
     print(f"Found {len(flights)} aircraft in the area.")
 
+    start = time.time()
     if flights:
         print("Finding the closest...")
         closest_flight = None
@@ -48,6 +53,7 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
         print(
             f"Closest flight is {closest_flight.callsign} at {min_distance:.2f} km away."
         )
+        print(f"Closest flight found in {time.time()-start:.2f}s")
         return fr_api.get_flight_details(closest_flight)
 
     else:
