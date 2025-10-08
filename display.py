@@ -4,6 +4,7 @@ import os
 import time
 import multiprocessing as mp
 from PIL import Image, ImageDraw
+from queue import Empty
 
 # --- Attempt to import the Raspberry Pi specific library ---
 IS_PI = False
