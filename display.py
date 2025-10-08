@@ -121,27 +121,31 @@ class MatrixDisplay(Display):
         # Create the matrix object within the thread's context.
         matrix = RGBMatrix(options=self.options)
 
+        # Create an off-screen canvas. We will draw to this, then swap it to the display.
+        canvas = matrix.CreateFrameCanvas()
+
         try:
             while self._running.is_set():
                 with self._lock:
-                    current_frames = self._frames[:]  # Make a local copy
+                    current_frames = self._frames[:]
 
                 if current_frames:
-                    if len(current_frames) > 1:  # It's an animation
+                    if len(current_frames) > 1:  # Animation
                         for frame in current_frames:
                             if not self._running.is_set():
                                 break
-                            matrix.SetImage(frame.convert("RGB"))
-                            time.sleep(0.1)  # Animation speed
-                    else:  # It's a static image
-                        matrix.SetImage(current_frames[0].convert("RGB"))
-                        time.sleep(0.5)  # Sleep to prevent busy-waiting
+                            canvas.SetImage(frame.convert("RGB"))
+                            canvas = matrix.SwapOnVSync(canvas)
+                            time.sleep(0.1)
+                    else:  # Static image
+                        canvas.SetImage(current_frames[0].convert("RGB"))
+                        canvas = matrix.SwapOnVSync(canvas)
+                        time.sleep(0.5)
                 else:
-                    # No frames to show, clear the panel and sleep.
-                    matrix.Clear()
+                    canvas.Clear()
+                    canvas = matrix.SwapOnVSync(canvas)
                     time.sleep(0.1)
         finally:
-            # Ensure the panel is cleared when the thread exits.
             matrix.Clear()
 
     def start(self):
