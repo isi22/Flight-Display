@@ -1,23 +1,51 @@
-# display.py - Handles sending images to the correct output.
+# display.py - Handles display output, switching between physical and simulated.
 
-import time
 import os
-import threading
+import time
+import multiprocessing as mp
 from PIL import Image, ImageDraw
 
-# --- Auto-detection of Hardware ---
-# The 'try...except' block is the key to this whole system.
+# --- Attempt to import the Raspberry Pi specific library ---
 IS_PI = False
 try:
-    # If this import works, we are on a Raspberry Pi with the library installed.
     from rgbmatrix import RGBMatrix, RGBMatrixOptions
 
     IS_PI = True
-    print("Raspberry Pi with RGBMatrix library detected. Using physical display.")
 except ImportError:
-    # If it fails, we are on a different computer (e.g., your development machine).
     print("Not on a Raspberry Pi. Using file-based simulator.")
-# ----------------------------------
+
+
+def _matrix_process_target(queue, options):
+    """
+    This function runs in a separate process.
+    It initialises the matrix and runs the display loop.
+    """
+    matrix = RGBMatrix(options=options)
+    canvas = matrix.CreateFrameCanvas()
+
+    try:
+        while True:
+            # Wait for a new set of frames from the main process
+            frames = queue.get()
+
+            # A special 'None' value signals the process to exit
+            if frames is None:
+                break
+
+            if frames:
+                if len(frames) > 1:  # Animation
+                    for frame in frames:
+                        canvas.SetImage(frame.convert("RGB"))
+                        canvas = matrix.SwapOnVSync(canvas)
+                        time.sleep(0.1)
+                else:  # Static image
+                    canvas.SetImage(frames[0].convert("RGB"))
+                    canvas = matrix.SwapOnVSync(canvas)
+            else:  # Empty list means clear the screen
+                canvas.Clear()
+                canvas = matrix.SwapOnVSync(canvas)
+    finally:
+        matrix.Clear()
 
 
 class Display:
@@ -36,6 +64,42 @@ class Display:
         raise NotImplementedError
 
 
+class MatrixDisplay(Display):
+    """Manages a separate process for sending images to the physical matrix."""
+
+    def __init__(self):
+        self.options = RGBMatrixOptions()
+        self.options.rows = 32
+        self.options.cols = 64
+        self.options.chain_length = 1
+        self.options.parallel = 1
+        self.options.hardware_mapping = "regular"
+        self.options.led_rgb_sequence = "RBG"
+
+        # --- Multiprocessing setup ---
+        self._queue = mp.Queue()
+        self._process = mp.Process(
+            target=_matrix_process_target, args=(self._queue, self.options), daemon=True
+        )
+
+    def start(self):
+        print("Starting display process.")
+        self._process.start()
+
+    def stop(self):
+        print("Stopping display process.")
+        self._queue.put(None)  # Send sentinel to stop the loop
+        self._process.join()  # Wait for the process to finish cleanly
+
+    def show(self, images, **kwargs):
+        """Sends a new set of frames to the display process."""
+        self._queue.put(images if isinstance(images, list) else [images])
+
+    def clear(self):
+        """Sends a clear command to the display process."""
+        self._queue.put([])
+
+
 class SimulatorDisplay(Display):
     """Saves the image(s) to a file, simulating the display."""
 
@@ -45,7 +109,6 @@ class SimulatorDisplay(Display):
         print(f"Simulator active. Images will be saved in '{self.save_folder}/'")
 
     def _render_to_file_image(self, image, dot_size=4, gap=1):
-        """Scales a raw image up into a pretty simulated image file."""
         width, height = image.size
         cell_size = dot_size + gap
         img_width = width * cell_size - gap
@@ -55,7 +118,7 @@ class SimulatorDisplay(Display):
         for y in range(height):
             for x in range(width):
                 pixel = image.getpixel((x, y))
-                if pixel != (0, 0, 0):  # If the pixel is on
+                if pixel != (0, 0, 0):
                     x0 = x * cell_size
                     y0 = y * cell_size
                     x1 = x0 + dot_size
@@ -67,13 +130,10 @@ class SimulatorDisplay(Display):
         if not flight_data:
             flight_data = {"flight_number": "unknown"}
 
-        if not isinstance(images, list):
-            images = [images]
-
         flight_num = flight_data.get("flight_number", "unknown").replace("/", "-")
+        images = images if isinstance(images, list) else [images]
 
         if len(images) > 1:
-            # It's an animation
             filename = f"flight_display_{flight_num}.gif"
             full_path = os.path.join(self.save_folder, filename)
             rendered_frames = [self._render_to_file_image(img) for img in images]
@@ -87,7 +147,6 @@ class SimulatorDisplay(Display):
             )
             print(f"Saved animation to {full_path}")
         else:
-            # It's a single static image
             filename = f"flight_display_{flight_num}.png"
             full_path = os.path.join(self.save_folder, filename)
             rendered_image = self._render_to_file_image(images[0])
@@ -96,82 +155,6 @@ class SimulatorDisplay(Display):
 
     def clear(self):
         print("Simulator: Clearing display (no action needed).")
-
-
-class MatrixDisplay(Display):
-    """Sends the image(s) to a physical RGB LED matrix."""
-
-    def __init__(self):
-        self.options = RGBMatrixOptions()
-        self.options.rows = 32
-        self.options.cols = 64
-        self.options.chain_length = 1
-        self.options.parallel = 1
-        self.options.hardware_mapping = "regular"
-        self.options.led_rgb_sequence = "RBG"
-
-        # --- Threading setup ---
-        self._frames = []
-        self._lock = threading.Lock()
-        self._running = threading.Event()
-        self._thread = threading.Thread(target=self._run_loop, daemon=True)
-
-    def _run_loop(self):
-        """The main loop for the display thread."""
-        # Create the matrix object within the thread's context.
-        matrix = RGBMatrix(options=self.options)
-
-        # Create an off-screen canvas. We will draw to this, then swap it to the display.
-        canvas = matrix.CreateFrameCanvas()
-
-        try:
-            while self._running.is_set():
-                with self._lock:
-                    current_frames = self._frames[:]
-
-                if current_frames:
-                    if len(current_frames) > 1:  # Animation
-                        for frame in current_frames:
-                            if not self._running.is_set():
-                                break
-                            clean_frame = Image.frombytes(
-                                "RGB", frame.size, frame.convert("RGB").tobytes()
-                            )
-                            canvas.SetImage(clean_frame)
-                            canvas = matrix.SwapOnVSync(canvas)
-                            time.sleep(0.1)
-                    else:  # Static image
-                        canvas.SetImage(current_frames[0].convert("RGB"))
-                        canvas = matrix.SwapOnVSync(canvas)
-                        time.sleep(0.5)
-                else:
-                    canvas.Clear()
-                    canvas = matrix.SwapOnVSync(canvas)
-                    time.sleep(0.1)
-        finally:
-            matrix.Clear()
-
-    def start(self):
-        """Starts the background display thread."""
-        print("Starting display thread.")
-        self._running.set()
-        self._thread.start()
-
-    def stop(self):
-        """Stops the background display thread."""
-        print("Stopping display thread.")
-        self._running.clear()
-        self._thread.join()  # Wait for the thread to finish cleanly
-
-    def show(self, images, **kwargs):
-        """Updates the frames to be displayed by the thread."""
-        with self._lock:
-            self._frames = images if isinstance(images, list) else [images]
-
-    def clear(self):
-        """Clears the frames to be displayed."""
-        with self._lock:
-            self._frames = []
 
 
 def get_display():
