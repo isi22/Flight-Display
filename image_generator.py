@@ -70,28 +70,14 @@ class ImageGenerator:
                                             self.grid[draw_y][draw_x] = 1
                 x += (char_width + 1) * scale
 
-    def render(
-        self, dot_size=10, gap=2, on_colour=(255, 255, 0), glow_colour=(64, 64, 64)
-    ):
-        cell_size = dot_size + gap
-        img_width = self.width * cell_size - gap
-        img_height = self.height * cell_size - gap
-        image = Image.new("RGB", (img_width, img_height), color="black")
-        draw = ImageDraw.Draw(image)
+    def get_image(self, on_colour=(255, 255, 0)):
+        """Converts the internal grid to a correctly sized Pillow Image."""
+        image = Image.new("RGB", (self.width, self.height), color="black")
         for y in range(self.height):
             for x in range(self.width):
-                state = self.grid[y][x]
-                if state == 0:
-                    continue
-                x0 = x * cell_size
-                y0 = y * cell_size
-                x1 = x0 + dot_size
-                y1 = y0 + dot_size
-                if state == 1:
-                    draw.rectangle([(x0, y0), (x1, y1)], fill=glow_colour)
-                    draw.ellipse([(x0, y0), (x1, y1)], fill=on_colour)
-        # We now return the raw Pillow Image object
-        return image.convert("RGB")  # Convert to RGB for the matrix library
+                if self.grid[y][x] == 1:
+                    image.putpixel((x, y), on_colour)
+        return image
 
 
 def get_status_colour(diff_seconds):
@@ -139,15 +125,7 @@ def generate_display_image(
     # --- Configuration ---
     MATRIX_WIDTH = 64
     MATRIX_HEIGHT = 32
-    DOT_SIZE = 2
-    DOT_GAP = 1
     ON_COLOUR = get_status_colour(time_difference_seconds)
-    GLOW_COLOUR = (
-        int(ON_COLOUR[0] * 0.25),
-        int(ON_COLOUR[1] * 0.25),
-        int(ON_COLOUR[2] * 0.25),
-    )
-
     margin = 2
 
     generator = ImageGenerator(width=MATRIX_WIDTH, height=MATRIX_HEIGHT)
@@ -180,9 +158,7 @@ def generate_display_image(
         generator.draw_text(line_2_text, x_start=margin, y_start=line_2_y)
         generator.draw_text(line_3_text, x_start=margin, y_start=line_3_y)
 
-        display_image = generator.render(
-            dot_size=DOT_SIZE, gap=DOT_GAP, on_colour=ON_COLOUR, glow_colour=GLOW_COLOUR
-        )
+        display_image = generator.get_image(on_colour=ON_COLOUR)
         return display_image
 
     else:
@@ -224,11 +200,6 @@ def generate_display_image(
             else:
                 generator.draw_text(line_3_text, x_start=margin, y_start=line_3_y)
 
-            frame_image = generator.render(
-                dot_size=DOT_SIZE,
-                gap=DOT_GAP,
-                on_colour=ON_COLOUR,
-                glow_colour=GLOW_COLOUR,
-            )
+            frame_image = generator.get_image(on_colour=ON_COLOUR)
             frames.append(frame_image)
         return frames

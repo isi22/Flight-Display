@@ -79,6 +79,7 @@ class MatrixDisplay(Display):
         options.chain_length = 1
         options.parallel = 1
         options.hardware_mapping = "regular"
+        options.led_rgb_sequence = "RBG"
         self.matrix = RGBMatrix(options=options)
 
     def show(self, images, **kwargs):
