@@ -70,6 +70,7 @@ def main():
     API_TIMEOUT = 1
 
     display = get_display()
+    display.start()
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
 
     try:
