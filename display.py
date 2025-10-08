@@ -2,6 +2,8 @@
 
 import time
 import os
+import threading
+from PIL import Image, ImageDraw
 
 # --- Auto-detection of Hardware ---
 # The 'try...except' block is the key to this whole system.
@@ -19,9 +21,15 @@ except ImportError:
 
 
 class Display:
-    """A base class for display drivers."""
+    """Base class for display types."""
 
-    def show(self, images, path=None):
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def show(self, images, **kwargs):
         raise NotImplementedError
 
     def clear(self):
@@ -36,6 +44,25 @@ class SimulatorDisplay(Display):
         os.makedirs(self.save_folder, exist_ok=True)
         print(f"Simulator active. Images will be saved in '{self.save_folder}/'")
 
+    def _render_to_file_image(self, image, dot_size=4, gap=1):
+        """Scales a raw image up into a pretty simulated image file."""
+        width, height = image.size
+        cell_size = dot_size + gap
+        img_width = width * cell_size - gap
+        img_height = height * cell_size - gap
+        out_image = Image.new("RGB", (img_width, img_height), color="black")
+        draw = ImageDraw.Draw(out_image)
+        for y in range(height):
+            for x in range(width):
+                pixel = image.getpixel((x, y))
+                if pixel != (0, 0, 0):  # If the pixel is on
+                    x0 = x * cell_size
+                    y0 = y * cell_size
+                    x1 = x0 + dot_size
+                    y1 = y0 + dot_size
+                    draw.ellipse([(x0, y0), (x1, y1)], fill=pixel)
+        return out_image
+
     def show(self, images, flight_data=None, **kwargs):
         if not flight_data:
             flight_data = {"flight_number": "unknown"}
@@ -49,10 +76,11 @@ class SimulatorDisplay(Display):
             # It's an animation
             filename = f"flight_display_{flight_num}.gif"
             full_path = os.path.join(self.save_folder, filename)
-            images[0].save(
+            rendered_frames = [self._render_to_file_image(img) for img in images]
+            rendered_frames[0].save(
                 full_path,
                 save_all=True,
-                append_images=images[1:],
+                append_images=rendered_frames[1:],
                 duration=100,
                 loop=0,
                 optimize=False,
@@ -62,7 +90,8 @@ class SimulatorDisplay(Display):
             # It's a single static image
             filename = f"flight_display_{flight_num}.png"
             full_path = os.path.join(self.save_folder, filename)
-            images[0].save(full_path)
+            rendered_image = self._render_to_file_image(images[0])
+            rendered_image.save(full_path)
             print(f"Saved image to {full_path}")
 
     def clear(self):
@@ -82,21 +111,54 @@ class MatrixDisplay(Display):
         options.led_rgb_sequence = "RBG"
         self.matrix = RGBMatrix(options=options)
 
-    def show(self, images, **kwargs):
-        if not isinstance(images, list):
-            images = [images]
+        # --- Threading setup ---
+        self._frames = []
+        self._lock = threading.Lock()
+        self._running = threading.Event()
+        self._thread = threading.Thread(target=self._run_loop, daemon=True)
 
-        if len(images) > 1:
-            # It's an animation, loop through frames
-            while True:  # You might want a more sophisticated loop control
-                for image in images:
-                    self.matrix.SetImage(image.convert("RGB"))
-                    time.sleep(0.1)  # Animation speed
-        else:
-            # It's a single static image
-            self.matrix.SetImage(images[0].convert("RGB"))
+    def _run_loop(self):
+        """The main loop for the display thread."""
+        while self._running.is_set():
+            with self._lock:
+                current_frames = self._frames[:]  # Make a local copy
+
+            if current_frames:
+                if len(current_frames) > 1:  # It's an animation
+                    for frame in current_frames:
+                        if not self._running.is_set():
+                            break
+                        self.matrix.SetImage(frame.convert("RGB"))
+                        time.sleep(0.1)  # Animation speed
+                else:  # It's a static image
+                    self.matrix.SetImage(current_frames[0].convert("RGB"))
+                    time.sleep(0.5)  # Sleep to prevent busy-waiting on static images
+            else:
+                # No frames to show, sleep briefly
+                time.sleep(0.1)
+
+    def start(self):
+        """Starts the background display thread."""
+        print("Starting display thread.")
+        self._running.set()
+        self._thread.start()
+
+    def stop(self):
+        """Stops the background display thread."""
+        print("Stopping display thread.")
+        self._running.clear()
+        self._thread.join()
+        self.matrix.Clear()  # Clean up the panel
+
+    def show(self, images, **kwargs):
+        """Updates the frames to be displayed by the thread."""
+        with self._lock:
+            self._frames = images if isinstance(images, list) else [images]
 
     def clear(self):
+        """Clears the frames to be displayed."""
+        with self._lock:
+            self._frames = []
         self.matrix.Clear()
 
 

@@ -28,15 +28,11 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
     """
     Finds the closest flight to the home location.
     """
-    start = time.time()
+
     bounds = fr_api.get_bounds_by_point(lat, lon, radius)  # API uses metres
-    print(f"Bounds calculated in {time.time()-start:.2f}s")
-    start = time.time()
     flights = fr_api.get_flights(bounds=bounds)
-    print(f"Flight data retrieved in {time.time()-start:.2f}s")
     print(f"Found {len(flights)} aircraft in the area.")
 
-    start = time.time()
     if flights:
         print("Finding the closest...")
         closest_flight = None
@@ -53,7 +49,6 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
         print(
             f"Closest flight is {closest_flight.callsign} at {min_distance:.2f} km away."
         )
-        print(f"Closest flight found in {time.time()-start:.2f}s")
         return fr_api.get_flight_details(closest_flight)
 
     else:
@@ -77,19 +72,19 @@ def main():
     display = get_display()
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
 
-    while True:
-        cycle_start_time = time.time()
-        print("\n" + "=" * 30)
-        print(f"Searching for flights... ({datetime.now().strftime('%H:%M:%S')})")
+    try:
+        while True:
+            cycle_start_time = time.time()
+            print("\n" + "=" * 30)
+            print(f"Searching for flights... ({datetime.now().strftime('%H:%M:%S')})")
 
-        find_api_start_time = time.time()
-        flight_details = find_closest_flight(
-            fr_api, HOME_LAT, HOME_LON, SEARCH_RADIUS_KM * 1000, MAX_ALTITUDE_FT
-        )
-        find_api_time = time.time()
+            find_api_start_time = time.time()
+            flight_details = find_closest_flight(
+                fr_api, HOME_LAT, HOME_LON, SEARCH_RADIUS_KM * 1000, MAX_ALTITUDE_FT
+            )
+            find_api_time = time.time()
 
-        if flight_details:
-            try:
+            if flight_details:
                 # --- Extract and Format Data for Display ---
                 flight_data = {
                     "flight_number": flight_details.get("identification", {})
@@ -190,18 +185,18 @@ def main():
                 print(
                     f"  Display Time:        {display_time - display_start_time:.2f}s"
                 )
+            else:
+                print("No suitable flights found nearby. Clearing display.")
+                display.clear()
 
-            except Exception as e:
-                print(f"Error processing flight details: {e}")
-        else:
-            print("No suitable flights found nearby. Clearing display.")
-            display.clear()
+            total_processing_time = time.time() - cycle_start_time
+            print(f"  Total Cycle Time:    {total_processing_time:.2f}s")
 
-        total_processing_time = time.time() - cycle_start_time
-        print(f"  Total Cycle Time:    {total_processing_time:.2f}s")
-
-        print(f"Waiting for {REFRESH_INTERVAL_SECONDS} seconds...")
-        time.sleep(REFRESH_INTERVAL_SECONDS)
+            print(f"Waiting for {REFRESH_INTERVAL_SECONDS} seconds...")
+            time.sleep(REFRESH_INTERVAL_SECONDS)
+    finally:
+        print("\nShutting down. Stopping display thread.")
+        display.stop()
 
 
 if __name__ == "__main__":
