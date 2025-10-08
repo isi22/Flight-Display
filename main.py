@@ -34,7 +34,6 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
     print(f"Found {len(flights)} aircraft in the area.")
 
     if flights:
-        print("Finding the closest...")
         closest_flight = None
         min_distance = float("inf")
 
@@ -74,14 +73,15 @@ def main():
     # Define your home location and search radius in kilometers
     HOME_LAT = 51.487077
     HOME_LON = -0.217605
-    SEARCH_RADIUS_KM = 10  # Search within a 20km radius
+    SEARCH_RADIUS_KM = 3  # Search within a 20km radius
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
-    REFRESH_INTERVAL_SECONDS = 15
+    REFRESH_INTERVAL_SECONDS = 5
     API_TIMEOUT = 1
 
     display = get_display()
     display.start()
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
+    previous_flight_number = None
 
     try:
         while True:
@@ -95,12 +95,39 @@ def main():
             )
             find_api_time = time.time()
 
-            if flight_details:
+            if not flight_details:
+                current_flight_number = None
+            else:
+                current_flight_number = (
+                    flight_details.get("identification", {})
+                    .get("number", {})
+                    .get("default")
+                )
+
+            if current_flight_number == previous_flight_number:
+
+                print("\nNo update found. Display remains the same.")
+                print("\n--- Performance ---")
+                print(
+                    f"  Find Flights API:    {find_api_time - find_api_start_time:.2f}s"
+                )
+
+            elif current_flight_number is None:
+
+                previous_flight_number = current_flight_number
+
+                print("\nNo flights within radius. Display is cleared.")
+                print("\n--- Performance ---")
+                print(
+                    f"  Find Flights API:    {find_api_time - find_api_start_time:.2f}s"
+                )
+                display.clear()
+
+            else:
+                previous_flight_number = current_flight_number
                 # --- Extract and Format Data for Display ---
                 flight_data = {
-                    "flight_number": flight_details.get("identification", {})
-                    .get("number", {})
-                    .get("default"),
+                    "flight_number": current_flight_number,
                     "callsign": flight_details.get("identification", {}).get(
                         "callsign"
                     ),
@@ -152,7 +179,7 @@ def main():
                     .strip()
                 )
 
-                print(f"Displaying data for: {flight_data['flight_number']}")
+                print(f"  Flight number: {flight_data['flight_number']}")
                 print(f"  Callsign: {flight_data['callsign'] or 'N/A'}")
                 print(f"  Airline: {flight_data['airline'] or 'N/A'}")
                 print(f"  Aircraft: {flight_data['aircraft'] or 'N/A'}")
@@ -167,7 +194,7 @@ def main():
                     f"  Scheduled Arrival: {datetime.fromtimestamp(flight_data['scheduled_arrival']).strftime('%H:%M:%S on %d-%b-%Y')}"
                 )
                 print(
-                    f"  Estimated Arrival: {datetime.fromtimestamp(flight_data['estimated_arrival']).strftime('%H:%M:%S on %d-%b-%Y')}"
+                    f"  Estimated Arrival: {datetime.fromtimestamp(flight_data['estimated_arrival']).strftime('%H:%M:%S on %d-%b-%Y')}\n"
                 )
 
                 # --- Generate the Image ---
@@ -191,17 +218,11 @@ def main():
 
                 print("\n--- Performance ---")
                 print(
-                    f"  Find Flights API:    {find_api_time - find_api_start_time:.2f}s"
-                )
-                print(
                     f"  Image Generation:    {image_gen_time - image_gen_start_time:.2f}s"
                 )
                 print(
                     f"  Display Time:        {display_time - display_start_time:.2f}s"
                 )
-            else:
-                print("No suitable flights found nearby. Clearing display.")
-                display.clear()
 
             total_processing_time = time.time() - cycle_start_time
             print(f"  Total Cycle Time:    {total_processing_time:.2f}s")
@@ -209,7 +230,7 @@ def main():
             wait_time = REFRESH_INTERVAL_SECONDS - total_processing_time
             if wait_time < 0:
                 wait_time = 0
-            print(f"Waiting {wait_time:.2f}s before next update...")
+            # print(f"Waiting {wait_time:.2f}s before next update...")
             time.sleep(wait_time)
     finally:
         print("\nShutting down. Stopping display thread.")
