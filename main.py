@@ -63,20 +63,24 @@ def main():
     # Define your home location and search radius in kilometers
     HOME_LAT = 51.487077
     HOME_LON = -0.217605
-    SEARCH_RADIUS_KM = 3  # Search within a 20km radius
+    SEARCH_RADIUS_KM = 20  # Search within a 20km radius
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
-    REFRESH_INTERVAL_SECONDS = 60
+    REFRESH_INTERVAL_SECONDS = 5
+    API_TIMEOUT = 1
 
     display = get_display()
-    fr_api = FlightRadar24API()
+    fr_api = FlightRadar24API(timeout=API_TIMEOUT)
 
     while True:
+        cycle_start_time = time.time()
         print("\n" + "=" * 30)
         print(f"Searching for flights... ({datetime.now().strftime('%H:%M:%S')})")
 
+        find_api_start_time = time.time()
         flight_details = find_closest_flight(
             fr_api, HOME_LAT, HOME_LON, SEARCH_RADIUS_KM * 1000, MAX_ALTITUDE_FT
         )
+        find_api_time = time.time()
 
         if flight_details:
             try:
@@ -154,6 +158,7 @@ def main():
                 )
 
                 # --- Generate the Image ---
+                image_gen_start_time = time.time()
                 image_frames = generate_display_image(
                     flight_number=flight_data["flight_number"].upper(),
                     origin_code=flight_data["origin_code"].upper(),
@@ -162,15 +167,32 @@ def main():
                     time_difference_seconds=flight_data["estimated_arrival"]
                     - flight_data["scheduled_arrival"],
                 )
+                image_gen_time = time.time()
 
                 # --- Show the Image (Simulator or Physical Matrix) ---
+                display_start_time = time.time()
                 display.show(image_frames, flight_data=flight_data)
+                display_time = time.time()
+
+                print("\n--- Performance ---")
+                print(
+                    f"  Find Flights API:    {find_api_time - find_api_start_time:.2f}s"
+                )
+                print(
+                    f"  Image Generation:    {image_gen_time - image_gen_start_time:.2f}s"
+                )
+                print(
+                    f"  Display Time:        {display_time - display_start_time:.2f}s"
+                )
 
             except Exception as e:
                 print(f"Error processing flight details: {e}")
         else:
             print("No suitable flights found nearby. Clearing display.")
             display.clear()
+
+        total_processing_time = time.time() - cycle_start_time
+        print(f"  Total Cycle Time:    {total_processing_time:.2f}s")
 
         print(f"Waiting for {REFRESH_INTERVAL_SECONDS} seconds...")
         time.sleep(REFRESH_INTERVAL_SECONDS)
