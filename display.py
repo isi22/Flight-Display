@@ -1,7 +1,7 @@
 # display.py - Handles sending images to the correct output.
 
 import time
-from PIL import Image
+import os
 
 # --- Auto-detection of Hardware ---
 # The 'try...except' block is the key to this whole system.
@@ -24,28 +24,49 @@ class Display:
     def show(self, images, path=None):
         raise NotImplementedError
 
+    def clear(self):
+        raise NotImplementedError
+
 
 class SimulatorDisplay(Display):
     """Saves the image(s) to a file, simulating the display."""
 
-    def show(self, images, path=None):
-        if path is None:
-            print("Error: A file path is required for the simulator display.")
-            return
+    def __init__(self, save_folder="simulated_displays"):
+        self.save_folder = save_folder
+        os.makedirs(self.save_folder, exist_ok=True)
+        print(f"Simulator active. Images will be saved in '{self.save_folder}/'")
+
+    def show(self, images, flight_data=None, **kwargs):
+        if not flight_data:
+            flight_data = {"flight_number": "unknown"}
+
         if not isinstance(images, list):
-            # It's a single static image
-            images.save(path)
-            print(f"Simulator saved static image to '{path}'")
-        else:
-            # It's a list of frames for an animation
+            images = [images]
+
+        flight_num = flight_data.get("flight_number", "unknown").replace("/", "-")
+
+        if len(images) > 1:
+            # It's an animation
+            filename = f"flight_display_{flight_num}.gif"
+            full_path = os.path.join(self.save_folder, filename)
             images[0].save(
-                path,
+                full_path,
                 save_all=True,
                 append_images=images[1:],
-                duration=100,  # ms per frame
+                duration=100,
                 loop=0,
+                optimize=False,
             )
-            print(f"Simulator saved animation to '{path}'")
+            print(f"Saved animation to {full_path}")
+        else:
+            # It's a single static image
+            filename = f"flight_display_{flight_num}.png"
+            full_path = os.path.join(self.save_folder, filename)
+            images[0].save(full_path)
+            print(f"Saved image to {full_path}")
+
+    def clear(self):
+        print("Simulator: Clearing display (no action needed).")
 
 
 class MatrixDisplay(Display):
@@ -62,20 +83,20 @@ class MatrixDisplay(Display):
 
     def show(self, images, path=None):
         if not isinstance(images, list):
-            # Display a single static image
-            self.matrix.SetImage(images)
-            print("Sent static image to LED matrix.")
+            images = [images]
+
+        if len(images) > 1:
+            # It's an animation, loop through frames
+            while True:  # You might want a more sophisticated loop control
+                for image in images:
+                    self.matrix.SetImage(image.convert("RGB"))
+                    time.sleep(0.1)  # Animation speed
         else:
-            # Loop through and display animation frames
-            print("Sending animation to LED matrix... (Press Ctrl+C to stop)")
-            try:
-                while True:
-                    for frame in images:
-                        self.matrix.SetImage(frame)
-                        time.sleep(0.1)  # Controls scroll speed
-            except KeyboardInterrupt:
-                print("Animation stopped.")
-                self.matrix.Clear()
+            # It's a single static image
+            self.matrix.SetImage(images[0].convert("RGB"))
+
+    def clear(self):
+        self.matrix.Clear()
 
 
 def get_display():
