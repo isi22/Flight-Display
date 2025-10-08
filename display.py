@@ -102,14 +102,13 @@ class MatrixDisplay(Display):
     """Sends the image(s) to a physical RGB LED matrix."""
 
     def __init__(self):
-        options = RGBMatrixOptions()
-        options.rows = 32
-        options.cols = 64
-        options.chain_length = 1
-        options.parallel = 1
-        options.hardware_mapping = "regular"
-        options.led_rgb_sequence = "RBG"
-        self.matrix = RGBMatrix(options=options)
+        self.options = RGBMatrixOptions()
+        self.options.rows = 32
+        self.options.cols = 64
+        self.options.chain_length = 1
+        self.options.parallel = 1
+        self.options.hardware_mapping = "regular"
+        self.options.led_rgb_sequence = "RBG"
 
         # --- Threading setup ---
         self._frames = []
@@ -119,23 +118,31 @@ class MatrixDisplay(Display):
 
     def _run_loop(self):
         """The main loop for the display thread."""
-        while self._running.is_set():
-            with self._lock:
-                current_frames = self._frames[:]  # Make a local copy
+        # Create the matrix object within the thread's context.
+        matrix = RGBMatrix(options=self.options)
 
-            if current_frames:
-                if len(current_frames) > 1:  # It's an animation
-                    for frame in current_frames:
-                        if not self._running.is_set():
-                            break
-                        self.matrix.SetImage(frame.convert("RGB"))
-                        time.sleep(0.1)  # Animation speed
-                else:  # It's a static image
-                    self.matrix.SetImage(current_frames[0].convert("RGB"))
-                    time.sleep(0.5)  # Sleep to prevent busy-waiting on static images
-            else:
-                # No frames to show, sleep briefly
-                time.sleep(0.1)
+        try:
+            while self._running.is_set():
+                with self._lock:
+                    current_frames = self._frames[:]  # Make a local copy
+
+                if current_frames:
+                    if len(current_frames) > 1:  # It's an animation
+                        for frame in current_frames:
+                            if not self._running.is_set():
+                                break
+                            matrix.SetImage(frame.convert("RGB"))
+                            time.sleep(0.1)  # Animation speed
+                    else:  # It's a static image
+                        matrix.SetImage(current_frames[0].convert("RGB"))
+                        time.sleep(0.5)  # Sleep to prevent busy-waiting
+                else:
+                    # No frames to show, clear the panel and sleep.
+                    matrix.Clear()
+                    time.sleep(0.1)
+        finally:
+            # Ensure the panel is cleared when the thread exits.
+            matrix.Clear()
 
     def start(self):
         """Starts the background display thread."""
@@ -147,8 +154,7 @@ class MatrixDisplay(Display):
         """Stops the background display thread."""
         print("Stopping display thread.")
         self._running.clear()
-        self._thread.join()
-        self.matrix.Clear()  # Clean up the panel
+        self._thread.join()  # Wait for the thread to finish cleanly
 
     def show(self, images, **kwargs):
         """Updates the frames to be displayed by the thread."""
@@ -159,7 +165,6 @@ class MatrixDisplay(Display):
         """Clears the frames to be displayed."""
         with self._lock:
             self._frames = []
-        self.matrix.Clear()
 
 
 def get_display():
