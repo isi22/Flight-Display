@@ -40,16 +40,26 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
 
         for flight in flights:
             # Ensure flight has valid data and is not on the ground
-            if flight.latitude and flight.longitude and flight.altitude < max_altitude:
+            if (
+                flight.latitude
+                and flight.longitude
+                and flight.flight_number
+                and flight.altitude < max_altitude
+            ):
                 dist = haversine(lat, lon, flight.latitude, flight.longitude)
                 if dist < min_distance:
                     min_distance = dist
                     closest_flight = flight
 
-        print(
-            f"Closest flight is {closest_flight.callsign} at {min_distance:.2f} km away."
-        )
-        return fr_api.get_flight_details(closest_flight)
+        if closest_flight:
+            print(
+                f"Closest flight is {closest_flight.callsign or 'N/A'} at {min_distance:.2f} km away."
+            )
+            return fr_api.get_flight_details(closest_flight)  # Pass timeout here too
+        else:
+            # This handles the case where all flights were filtered out
+            print("Flights do not match the criteria.")
+            return None
 
     else:
         return None
