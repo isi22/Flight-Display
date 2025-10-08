@@ -81,7 +81,7 @@ class MatrixDisplay(Display):
         options.hardware_mapping = "regular"
         self.matrix = RGBMatrix(options=options)
 
-    def show(self, images, path=None):
+    def show(self, images, **kwargs):
         if not isinstance(images, list):
             images = [images]
 
