@@ -77,7 +77,7 @@ def main():
     SEARCH_RADIUS_KM = 3  # Search within a 20km radius
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
     REFRESH_INTERVAL_SECONDS = 5
-    API_TIMEOUT = 1
+    API_TIMEOUT = 2
 
     display = get_display()
     display.start()
