@@ -29,10 +29,15 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
     Finds the closest flight to the home location.
     """
 
+    start = time.time()
     bounds = fr_api.get_bounds_by_point(lat, lon, radius)  # API uses metres
+    print(f"-- DEBUG: Bounds calculated in {time.time() - start:.2f}s: {bounds} --")
+    start = time.time()
     flights = fr_api.get_flights(bounds=bounds)
+    print(f"-- DEBUG: Flights fetched in {time.time() - start:.2f}s --")
     print(f"Found {len(flights)} aircraft in the area.")
 
+    start = time.time()
     if flights:
         closest_flight = None
         min_distance = float("inf")
@@ -55,7 +60,13 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
             print(
                 f"Closest flight is {closest_flight.callsign or 'N/A'} at {min_distance:.2f} km away."
             )
-            return fr_api.get_flight_details(closest_flight)  # Pass timeout here too
+            print(
+                f"-- DEBUG: Closest flight calculated in {time.time() - start:.2f}s --"
+            )
+            start = time.time()
+            flight_details = fr_api.get_flight_details(closest_flight)
+            print(f"-- DEBUG: Flight details fetched in {time.time() - start:.2f}s --")
+            return flight_details  # Pass timeout here too
         else:
             # This handles the case where all flights were filtered out
             print("Flights do not match the criteria.")
@@ -200,7 +211,7 @@ def main():
 
                 # --- Generate the Image ---
                 # FOR DEBUGGIN PURPOSES ONLY - REMOVE LATER
-                # flight_data["origin_city"] = "LOS ANGELES"
+                flight_data["origin_city"] = "LOS ANGELES"
 
                 image_gen_start_time = time.time()
                 image_frames = generate_display_image(
@@ -219,6 +230,9 @@ def main():
                 display_time = time.time()
 
                 print("\n--- Performance ---")
+                print(
+                    f"  Find Flights API:    {find_api_time - find_api_start_time:.2f}s"
+                )
                 print(
                     f"  Image Generation:    {image_gen_time - image_gen_start_time:.2f}s"
                 )
