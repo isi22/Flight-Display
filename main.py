@@ -182,6 +182,7 @@ def main():
                     .replace("Boeing ", "B")
                     .replace("Dreamliner", "DL")
                     .replace("Embraer", "E")
+                    .replace("(LR)", "")
                     .replace("(", "")
                     .replace(")", "")
                     .strip()
