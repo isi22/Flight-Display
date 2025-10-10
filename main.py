@@ -207,7 +207,7 @@ def main():
 
                 # --- Generate the Image ---
                 # FOR DEBUGGIN PURPOSES ONLY - REMOVE LATER
-                flight_data["origin_city"] = "LOS ANGELES"
+                # flight_data["origin_city"] = "LOS ANGELES"
 
                 image_gen_start_time = time.time()
                 image_frames = generate_display_image(
