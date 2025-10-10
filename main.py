@@ -63,11 +63,7 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
             # print(
             #     f"-- DEBUG: Closest flight calculated in {time.time() - start:.2f}s --"
             # )
-            # start = time.time()
-            flight_details = fr_api.get_flight_details(closest_flight)
-            # print(f"-- DEBUG: Flight details fetched in {time.time() - start:.2f}s --")
-            # print(dir(closest_flight))
-            return flight_details  # Pass timeout here too
+            return closest_flight  # Pass timeout here too
         else:
             # This handles the case where all flights were filtered out
             print("Flights do not match the criteria.")
@@ -102,42 +98,41 @@ def main():
             print("\n" + "=" * 30)
             print(f"Searching for flights... ({datetime.now().strftime('%H:%M:%S')})")
 
-            find_api_start_time = time.time()
-            flight_details = find_closest_flight(
+            find_flight_start_time = time.time()
+            flight = find_closest_flight(
                 fr_api, HOME_LAT, HOME_LON, SEARCH_RADIUS_KM * 1000, MAX_ALTITUDE_FT
             )
-            find_api_time = time.time()
+            find_flight_time = time.time()
 
-            if not flight_details:
+            if not flight:
                 current_flight_number = None
             else:
-                current_flight_number = (
-                    flight_details.get("identification", {})
-                    .get("number", {})
-                    .get("default")
-                )
+                current_flight_number = flight.number
 
             if current_flight_number == previous_flight_number:
 
                 print("\nNo update found. Display remains the same.")
                 print("\n--- Performance ---")
                 print(
-                    f"  Find Flights API:    {find_api_time - find_api_start_time:.2f}s"
+                    f"  Find Flights API:    {find_flight_time - find_flight_start_time:.2f}s"
                 )
 
             elif current_flight_number is None:
 
-                previous_flight_number = current_flight_number
+                previous_flight_number = None
 
                 print("\nNo flights within radius. Display is cleared.")
                 print("\n--- Performance ---")
                 print(
-                    f"  Find Flights API:    {find_api_time - find_api_start_time:.2f}s"
+                    f"  Find Flights API:    {find_flight_time - find_flight_start_time:.2f}s"
                 )
                 display.clear()
 
             else:
                 previous_flight_number = current_flight_number
+                find_flight_details_start_time = time.time()
+                flight_details = fr_api.get_flight_details(flight)
+                find_flight_details_time = time.time()
                 # --- Extract and Format Data for Display ---
                 flight_data = {
                     "flight_number": current_flight_number,
@@ -232,7 +227,10 @@ def main():
 
                 print("\n--- Performance ---")
                 print(
-                    f"  Find Flights API:    {find_api_time - find_api_start_time:.2f}s"
+                    f"  Find Flights API:    {find_flight_time - find_flight_start_time:.2f}s"
+                )
+                print(
+                    f"  Find Flight Details API: {find_flight_details_time - find_flight_details_start_time:.2f}s"
                 )
                 print(
                     f"  Image Generation:    {image_gen_time - image_gen_start_time:.2f}s"
