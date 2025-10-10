@@ -71,12 +71,18 @@ class ImageGenerator:
                 x += (char_width + 1) * scale
 
     def get_image(self, on_colour=(255, 255, 0)):
-        """Converts the internal grid to a correctly sized Pillow Image."""
-        image = Image.new("RGB", (self.width, self.height), color="black")
+
+        flat_pixels = []
+        black = (0, 0, 0)
         for y in range(self.height):
             for x in range(self.width):
                 if self.grid[y][x] == 1:
-                    image.putpixel((x, y), on_colour)
+                    flat_pixels.append(on_colour)
+                else:
+                    flat_pixels.append(black)
+
+        image = Image.new("RGB", (self.width, self.height))
+        image.putdata(flat_pixels)
         return image
 
 

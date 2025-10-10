@@ -29,15 +29,15 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
     Finds the closest flight to the home location.
     """
 
-    start = time.time()
+    # start = time.time()
     bounds = fr_api.get_bounds_by_point(lat, lon, radius)  # API uses metres
-    print(f"-- DEBUG: Bounds calculated in {time.time() - start:.2f}s: {bounds} --")
-    start = time.time()
+    # print(f"-- DEBUG: Bounds calculated in {time.time() - start:.2f}s: {bounds} --")
+    # start = time.time()
     flights = fr_api.get_flights(bounds=bounds)
-    print(f"-- DEBUG: Flights fetched in {time.time() - start:.2f}s --")
+    # print(f"-- DEBUG: Flights fetched in {time.time() - start:.2f}s --")
     print(f"Found {len(flights)} aircraft in the area.")
 
-    start = time.time()
+    # start = time.time()
     if flights:
         closest_flight = None
         min_distance = float("inf")
@@ -60,12 +60,13 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
             print(
                 f"Closest flight is {closest_flight.callsign or 'N/A'} at {min_distance:.2f} km away."
             )
-            print(
-                f"-- DEBUG: Closest flight calculated in {time.time() - start:.2f}s --"
-            )
-            start = time.time()
+            # print(
+            #     f"-- DEBUG: Closest flight calculated in {time.time() - start:.2f}s --"
+            # )
+            # start = time.time()
             flight_details = fr_api.get_flight_details(closest_flight)
-            print(f"-- DEBUG: Flight details fetched in {time.time() - start:.2f}s --")
+            # print(f"-- DEBUG: Flight details fetched in {time.time() - start:.2f}s --")
+            # print(dir(closest_flight))
             return flight_details  # Pass timeout here too
         else:
             # This handles the case where all flights were filtered out
