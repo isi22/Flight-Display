@@ -82,7 +82,7 @@ def main():
     # Define your home location and search radius in kilometers
     HOME_LAT = 51.487077
     HOME_LON = -0.217605
-    SEARCH_RADIUS_KM = 3  # Search within a 20km radius
+    SEARCH_RADIUS_KM = 30  # Search within a 20km radius
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
     REFRESH_INTERVAL_SECONDS = 5
     API_TIMEOUT = 2
