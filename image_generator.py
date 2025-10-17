@@ -127,6 +127,7 @@ def generate_display_image(
     aircraft_type,
     origin_city,
     time_difference_seconds,
+    flip_display=False,
 ):
     # --- Configuration ---
     MATRIX_WIDTH = 64
@@ -161,6 +162,11 @@ def generate_display_image(
         generator.draw_text(line_3_text, x_start=margin, y_start=line_3_y)
 
         display_image = generator.get_image(on_colour=ON_COLOUR)
+
+        # Apply flip if requested
+        if flip_display:
+            display_image = display_image.transpose(Image.ROTATE_180)
+
         return display_image
 
     else:
@@ -197,5 +203,9 @@ def generate_display_image(
             generator.draw_text(line_3_text, x_start=margin, y_start=line_3_y)
 
             frame_image = generator.get_image(on_colour=ON_COLOUR)
+
+            if flip_display:
+                frame_image = frame_image.transpose(Image.ROTATE_180)
+
             frames.append(frame_image)
         return frames

@@ -50,6 +50,7 @@ def find_closest_flight(fr_api, lat, lon, radius, max_altitude):
                 and flight.number
                 and flight.destination_airport_iata == "LHR"
                 and flight.altitude < max_altitude
+                and not flight.on_ground
             ):
                 dist = haversine(lat, lon, flight.latitude, flight.longitude)
                 if dist < min_distance:
@@ -86,6 +87,7 @@ def main():
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
     REFRESH_INTERVAL_SECONDS = 5
     API_TIMEOUT = 2
+    FLIP_DISPLAY = True  # Set to True to flip the display vertically
 
     display = get_display()
     display.start()
@@ -218,6 +220,7 @@ def main():
                     origin_city=flight_data["origin_city"].upper(),
                     time_difference_seconds=flight_data["estimated_arrival"]
                     - flight_data["scheduled_arrival"],
+                    flip_display=FLIP_DISPLAY,
                 )
                 image_gen_time = time.time()
 
