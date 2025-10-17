@@ -136,7 +136,7 @@ def generate_display_image(
     margin = 2
 
     generator = ImageGenerator(width=MATRIX_WIDTH, height=MATRIX_HEIGHT)
-    line_1_y, line_2_y, line_3_y = 1, 14, 24
+    line_1_y, line_2_y, line_3_y = 1, 15, 24
 
     line_1_left = origin_code
     line_1_right = flight_number
