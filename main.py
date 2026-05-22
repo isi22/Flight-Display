@@ -2,10 +2,12 @@
 
 from display import get_display
 from image_generator import generate_display_image
+import logging
 import math
 import time
 from FlightRadar24 import FlightRadar24API
 from datetime import datetime
+from requests.exceptions import HTTPError, RequestException
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -89,6 +91,9 @@ def main():
     API_TIMEOUT = 2
     FLIP_DISPLAY = True  # Set to True to flip the display vertically
 
+    # The library logs a non-fatal warning when transport already decompressed content.
+    logging.getLogger("FlightRadarAPI.request").setLevel(logging.ERROR)
+
     display = get_display()
     display.start()
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
@@ -131,9 +136,50 @@ def main():
                 display.clear()
 
             else:
-                previous_flight_number = current_flight_number
                 find_flight_details_start_time = time.time()
-                flight_details = fr_api.get_flight_details(flight)
+                try:
+                    flight_details = fr_api.get_flight_details(flight)
+                except HTTPError as e:
+                    status_code = getattr(getattr(e, "response", None), "status_code", None)
+                    print(
+                        f"\nCould not fetch flight details for {current_flight_number}: HTTP {status_code or 'error'}."
+                    )
+                    print("Will retry in the next cycle.")
+                    find_flight_details_time = time.time()
+                    print("\n--- Performance ---")
+                    print(
+                        f"  Find Flights API:    {find_flight_time - find_flight_start_time:.2f}s"
+                    )
+                    print(
+                        f"  Find Flight Details API: {find_flight_details_time - find_flight_details_start_time:.2f}s"
+                    )
+                    total_processing_time = time.time() - cycle_start_time
+                    print(f"  Total Cycle Time:    {total_processing_time:.2f}s")
+                    wait_time = REFRESH_INTERVAL_SECONDS - total_processing_time
+                    if wait_time < 0:
+                        wait_time = 0
+                    time.sleep(wait_time)
+                    continue
+                except RequestException as e:
+                    print(
+                        f"\nCould not fetch flight details for {current_flight_number}: {e}."
+                    )
+                    print("Will retry in the next cycle.")
+                    find_flight_details_time = time.time()
+                    print("\n--- Performance ---")
+                    print(
+                        f"  Find Flights API:    {find_flight_time - find_flight_start_time:.2f}s"
+                    )
+                    print(
+                        f"  Find Flight Details API: {find_flight_details_time - find_flight_details_start_time:.2f}s"
+                    )
+                    total_processing_time = time.time() - cycle_start_time
+                    print(f"  Total Cycle Time:    {total_processing_time:.2f}s")
+                    wait_time = REFRESH_INTERVAL_SECONDS - total_processing_time
+                    if wait_time < 0:
+                        wait_time = 0
+                    time.sleep(wait_time)
+                    continue
                 find_flight_details_time = time.time()
                 # --- Extract and Format Data for Display ---
                 flight_data = {
@@ -228,6 +274,7 @@ def main():
                 display_start_time = time.time()
                 display.show(image_frames, flight_data=flight_data)
                 display_time = time.time()
+                previous_flight_number = current_flight_number
 
                 print("\n--- Performance ---")
                 print(
