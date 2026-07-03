@@ -98,9 +98,10 @@ def main():
     display.start()
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
     previous_flight_number = None
-
+    print("check2")
     # try:
     while True:
+        print("check3")
         cycle_start_time = time.time()
         print("\n" + "=" * 30)
         print(f"Searching for flights... ({datetime.now().strftime('%H:%M:%S')})")
