@@ -5,7 +5,7 @@ from image_generator import generate_display_image
 import logging
 import math
 import time
-from FlightRadar24 import FlightRadar24API
+from FlightRadarAPI import FlightRadar24API
 from datetime import datetime
 from requests.exceptions import HTTPError, RequestException
 
