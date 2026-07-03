@@ -90,21 +90,18 @@ def main():
     REFRESH_INTERVAL_SECONDS = 5
     API_TIMEOUT = 5
     FLIP_DISPLAY = True  # Set to True to flip the display vertically
-    print("check1")
     # The library logs a non-fatal warning when transport already decompressed content.
     logging.getLogger("FlightRadarAPI.request").setLevel(logging.ERROR)
 
     display = get_display()
     display.start()
-    print("check2")
     
     previous_flight_number = None
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
-    
+
     # try:
     while True:
         
-        print("check3")
         cycle_start_time = time.time()
         print("\n" + "=" * 30)
         print(f"Searching for flights... ({datetime.now().strftime('%H:%M:%S')})")
