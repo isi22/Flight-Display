@@ -96,9 +96,10 @@ def main():
 
     display = get_display()
     display.start()
+    print("check2")
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
     previous_flight_number = None
-    print("check2")
+    
     # try:
     while True:
         print("check3")
