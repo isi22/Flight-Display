@@ -87,7 +87,7 @@ def main():
     HOME_LON = -0.217605
     SEARCH_RADIUS_KM = 30  # Search within a 20km radius
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
-    REFRESH_INTERVAL_SECONDS = 5
+    REFRESH_INTERVAL_SECONDS = 10
     API_TIMEOUT = 10
     FLIP_DISPLAY = True  # Set to True to flip the display vertically
     # The library logs a non-fatal warning when transport already decompressed content.
@@ -97,6 +97,7 @@ def main():
     display.start()
     
     previous_flight_number = None
+
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
 
     # try:
@@ -105,6 +106,7 @@ def main():
         cycle_start_time = time.time()
         print("\n" + "=" * 30)
         print(f"Searching for flights... ({datetime.now().strftime('%H:%M:%S')})")
+
 
         find_flight_start_time = time.time()
         flight = find_closest_flight(
