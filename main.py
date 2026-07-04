@@ -87,7 +87,7 @@ def main():
     HOME_LON = -0.217605
     SEARCH_RADIUS_KM = 30  # Search within a 20km radius
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
-    REFRESH_INTERVAL_SECONDS = 5
+    REFRESH_INTERVAL_SECONDS = 10
     API_TIMEOUT = 5
     FLIP_DISPLAY = True  # Set to True to flip the display vertically
     # The library logs a non-fatal warning when transport already decompressed content.
