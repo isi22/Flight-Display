@@ -88,14 +88,14 @@ def main():
     SEARCH_RADIUS_KM = 30  # Search within a 20km radius
     MAX_ALTITUDE_FT = 5000  # Only consider flights below this altitude
     REFRESH_INTERVAL_SECONDS = 10
-    API_TIMEOUT = 5
+    API_TIMEOUT = 10
     FLIP_DISPLAY = True  # Set to True to flip the display vertically
     # The library logs a non-fatal warning when transport already decompressed content.
     logging.getLogger("FlightRadarAPI.request").setLevel(logging.ERROR)
 
     display = get_display()
     display.start()
-    
+    print("Display started. Beginning flight tracking...")
     previous_flight_number = None
 
     fr_api = FlightRadar24API(timeout=API_TIMEOUT)
