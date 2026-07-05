@@ -8,7 +8,7 @@ import time
 from FlightRadarAPI import FlightRadar24API
 from datetime import datetime
 from requests.exceptions import HTTPError, RequestException
-
+import sys
 
 def haversine(lat1, lon1, lat2, lon2):
     """
@@ -80,6 +80,9 @@ def main():
     """
     Main application loop. Fetches flight data and displays it.
     """
+
+    sys.stdout.reconfigure(line_buffering=True)
+
 
     # --- Configuration ---
     # Define your home location and search radius in kilometers
