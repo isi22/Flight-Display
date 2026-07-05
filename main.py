@@ -96,12 +96,18 @@ def main():
     # The library logs a non-fatal warning when transport already decompressed content.
     logging.getLogger("FlightRadarAPI.request").setLevel(logging.ERROR)
 
+    flight = None
+    while not flight:
+        print("No working API found.")
+        fr_api = FlightRadar24API(timeout=API_TIMEOUT)
+        flight = find_closest_flight(
+                fr_api, HOME_LAT, HOME_LON, SEARCH_RADIUS_KM * 1000, MAX_ALTITUDE_FT
+            )
+    
     display = get_display()
     display.start()
     print("Display started. Beginning flight tracking...")
     previous_flight_number = None
-
-    fr_api = FlightRadar24API(timeout=API_TIMEOUT)
 
     # try:
     while True:
@@ -109,7 +115,7 @@ def main():
         cycle_start_time = time.time()
         print("\n" + "=" * 30)
         print(f"Searching for flights... ({datetime.now().strftime('%H:%M:%S')})")
-
+        
 
         find_flight_start_time = time.time()
         flight = find_closest_flight(
